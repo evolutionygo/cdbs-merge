@@ -92,17 +92,34 @@ def copy_data_from_db(source_db_path, dest_conn, dest_cursor):
     source_conn = sqlite3.connect(source_db_path)
     source_cursor = source_conn.cursor()
 
+    # Verificar si la tabla 'datas' existe
+    source_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='datas';")
+    if source_cursor.fetchone() is None:
+        print(f"No existe la tabla 'datas' en {source_db_path}, omitiendo este archivo.")
+        source_conn.close()
+        return
+
+    # Verificar si la tabla 'texts' existe
+    source_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='texts';")
+    if source_cursor.fetchone() is None:
+        print(f"No existe la tabla 'texts' en {source_db_path}, omitiendo este archivo.")
+        source_conn.close()
+        return
+
+    # Obtener todos los ids de la tabla `datas` de la base de datos destino para evitar duplicados
     dest_cursor.execute("SELECT id FROM datas")
     existing_ids = set(row[0] for row in dest_cursor.fetchall())
 
+    # Insertar datos de la tabla `datas`
     source_cursor.execute("SELECT * FROM datas")
     for row in source_cursor.fetchall():
-        if row[0] not in existing_ids:
+        if row[0] not in existing_ids:  # Verifica si el ID ya existe
             dest_cursor.execute("INSERT INTO datas VALUES (?,?,?,?,?,?,?,?,?,?,?)", row)
 
+    # Insertar datos de la tabla `texts`
     source_cursor.execute("SELECT * FROM texts")
     for row in source_cursor.fetchall():
-        if row[0] not in existing_ids:
+        if row[0] not in existing_ids:  # Asegurarse de que solo se inserten los textos de los IDs nuevos
             dest_cursor.execute("INSERT INTO texts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", row)
 
     source_conn.close()
@@ -125,13 +142,14 @@ def commit_and_push():
 download_file(cards_db_url, cards_db_path)
 
 # Obtener los archivos .cdb descargados manualmente en ./downloads
-cdb_files = [f for f in os.listdir(download_dir) if f.endswith(".cdb")]
+cdb_files = [os.path.join(download_dir, f) for f in os.listdir(download_dir) if f.endswith(".cdb")]
 
 # Mergear los archivos .cdb
 merge_databases(cards_db_path, merged_db_path, cdb_files)
 
 # Hacer commit y push del archivo mergeado al repositorio
 commit_and_push()
+
 
 
 
