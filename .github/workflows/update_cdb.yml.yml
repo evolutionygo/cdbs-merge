@@ -1,0 +1,53 @@
+name: Merge and Upload Cards CDB
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  merge-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Paso 1: Clonar el repositorio
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Paso 2: Instalar Python
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      # Paso 3: Instalar dependencias necesarias
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests sqlite3
+
+      # Paso 4: Ejecutar el script de merge de archivos .cdb
+      - name: Run merge script
+        run: |
+          python scripts/merge_cdb.py
+
+      # Paso 5: Configurar git (necesario para hacer commits)
+      - name: Configure git
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+
+      # Paso 6: Subir el archivo final cards.cdb al repositorio
+      - name: Commit and push the new cards.cdb
+        run: |
+          git add merged_updates.cdb
+          git commit -m "Updated cards.cdb"
+          git push
+        env:
+          # Esto usa un token GitHub para realizar el push de vuelta al repositorio
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+
+
