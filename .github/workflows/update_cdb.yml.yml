@@ -37,6 +37,8 @@ jobs:
         run: |
           git config --global user.name "Bot Termo"
           git config --global user.email "prueba@github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CDB_TOKEN }}@github.com/termitaklk/CDB-MERGES.git
+
 
       # Paso 6: Subir el archivo final cards.cdb al repositorio
       - name: Commit and push the new cards.cdb
