@@ -108,7 +108,7 @@ def copy_data_from_db(source_db_path, dest_conn, dest_cursor):
     source_cursor.execute("SELECT * FROM texts")
     for row in source_cursor.fetchall():
         if row[0] not in existing_ids:  # Asegurarse de que solo se inserten los textos de los IDs nuevos
-            dest_cursor.execute("INSERT INTO texts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", row)
+            dest_cursor.execute("INSERT INTO texts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", row)
 
     source_conn.close()
 
