@@ -43,7 +43,7 @@ jobs:
         run: |
           git add merged_updates.cdb
           git commit -m "Updated cards.cdb"
-          git push https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/termitaklk/CDB-MERGES.git
+          git push https://x-access-token:${{ secrets.CDB_TOKEN }}@github.com/termitaklk/CDB-MERGES.git
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
