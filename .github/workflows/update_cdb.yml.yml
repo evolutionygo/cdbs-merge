@@ -1,4 +1,4 @@
-name: Merge and Upload Cards CDB
+name: Merge and Upload Cards CDB to CDB-MERGES
 
 on:
   push:
@@ -6,51 +6,31 @@ on:
       - main
   workflow_dispatch:
 
-  permissions:
-  contents: write  # Da permisos de escritura al repositorio
-
 jobs:
   merge-and-upload:
     runs-on: ubuntu-latest
 
     steps:
-      # Paso 1: Clonar el repositorio
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Paso 2: Instalar Python
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
 
-      # Paso 3: Instalar dependencias necesarias
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests  # No necesitas instalar sqlite3
+          pip install requests
 
-      # Paso 4: Ejecutar el script de merge de archivos .cdb
-      - name: Run merge script
+      - name: Run merge script with token
+        env:
+          GH_TOKEN: ${{ secrets.CDB_TOKEN }}  # Pasar el token como variable de entorno
         run: |
           python scripts/merge_cdb.py
 
-      # Paso 5: Configurar git (necesario para hacer commits)
-      - name: Configure git
-        run: |
-          git config --global user.name "Bot Termo"
-          git config --global user.email "prueba@github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.CDB_TOKEN }}@github.com/termitaklk/CDB-MERGES.git
 
-
-      # Paso 6: Subir el archivo final cards.cdb al repositorio
-      - name: Commit and push the new cards.cdb
-        run: |
-          git add merged_updates.cdb
-          git commit -m "Updated cards.cdb"
-          git push origin main
-        env:
-          GITHUB_TOKEN: ${{ secrets.CDB_TOKEN }}
 
 
 

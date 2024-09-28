@@ -1,23 +1,32 @@
-import requests
-import sqlite3
 import os
-import glob
+import subprocess
+import sqlite3
+import requests
 import shutil
 
-# URLs de los repositorios
-cards_cdb_url = "https://github.com/purerosefallen/ygopro/raw/server/cards.cdb"
-cdb_repo_url = "https://code.moenext.com/mycard/pre-release-database-cdb"
+# URL del repositorio de destino
+REPO_URL = "https://x-access-token:{token}@github.com/termitaklk/CDB-MERGES.git"
 
 # Directorios
 download_dir = "./downloads"
 merged_db_path = "./merged_updates.cdb"
+cards_db_url = "https://github.com/purerosefallen/ygopro/raw/server/cards.cdb"
 cards_db_path = f"{download_dir}/cards.cdb"
 
-# Crear directorio de descargas si no existe
+# Crear el directorio de descargas si no existe
 if not os.path.exists(download_dir):
     os.makedirs(download_dir)
 
-# Función para descargar un archivo
+# Función para ejecutar comandos de shell
+def run_command(command):
+    process = subprocess.run(command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if process.returncode != 0:
+        print(f"Error al ejecutar el comando: {command}")
+        print(process.stderr)
+    else:
+        print(process.stdout)
+
+# Descargar el archivo cards.cdb
 def download_file(url, dest_path):
     print(f"Descargando {url}...")
     response = requests.get(url, stream=True)
@@ -28,20 +37,11 @@ def download_file(url, dest_path):
     else:
         print(f"Error al descargar {url}: {response.status_code}")
 
-# Descargar el archivo cards.cdb
-download_file(cards_cdb_url, cards_db_path)
-
-# Descargar todos los archivos del segundo repositorio
-# Esto es un ejemplo. En este caso necesitas descargar manualmente los archivos de https://code.moenext.com/mycard/pre-release-database-cdb
-# Si los archivos están accesibles de forma directa puedes automatizar la descarga.
-
-# Unir todas las bases de datos en una
+# Merge de todas las bases de datos
 def merge_databases(cards_db, output_db, cdb_files):
-    # Conexión a la base de datos principal
     conn = sqlite3.connect(output_db)
     cursor = conn.cursor()
 
-    # Crear las tablas en la nueva base de datos si no existen
     cursor.execute('''CREATE TABLE IF NOT EXISTS datas (
                         id INTEGER PRIMARY KEY,
                         ot INTEGER,
@@ -78,47 +78,61 @@ def merge_databases(cards_db, output_db, cdb_files):
                         str16 TEXT
                     )''')
 
-    # Copiar los datos del archivo cards.cdb
     copy_data_from_db(cards_db, conn, cursor)
 
-    # Mergear los datos de otros archivos .cdb
     for cdb_file in cdb_files:
         print(f"Mergeando datos desde {cdb_file}...")
         copy_data_from_db(cdb_file, conn, cursor)
 
-    # Guardar y cerrar la conexión
     conn.commit()
     conn.close()
 
+# Copiar datos desde la base de datos fuente a la destino
 def copy_data_from_db(source_db_path, dest_conn, dest_cursor):
     source_conn = sqlite3.connect(source_db_path)
     source_cursor = source_conn.cursor()
 
-    # Obtener todos los ids de la tabla `datas` de la base de datos destino para evitar duplicados
     dest_cursor.execute("SELECT id FROM datas")
     existing_ids = set(row[0] for row in dest_cursor.fetchall())
 
-    # Insertar datos de la tabla `datas`
     source_cursor.execute("SELECT * FROM datas")
     for row in source_cursor.fetchall():
-        if row[0] not in existing_ids:  # Verifica si el ID ya existe
+        if row[0] not in existing_ids:
             dest_cursor.execute("INSERT INTO datas VALUES (?,?,?,?,?,?,?,?,?,?,?)", row)
 
-    # Insertar datos de la tabla `texts` relacionados con los IDs de `datas`
     source_cursor.execute("SELECT * FROM texts")
     for row in source_cursor.fetchall():
-        if row[0] not in existing_ids:  # Asegurarse de que solo se inserten los textos de los IDs nuevos
+        if row[0] not in existing_ids:
             dest_cursor.execute("INSERT INTO texts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", row)
 
     source_conn.close()
 
-# Obtener la lista de archivos .cdb descargados
-cdb_files = glob.glob(f"{download_dir}/*.cdb")
+# Función para hacer commit y push
+def commit_and_push():
+    token = os.getenv("CDB_TOKEN")  # Obtener el token de la variable de entorno
+    repo_url = REPO_URL.format(token=token)
 
-# Llamar al merge de bases de datos
+    run_command("git add merged_updates.cdb")
+    run_command('git commit -m "Updated cards.cdb"')
+
+    # Cambiar la URL remota para incluir el token de acceso personal
+    run_command(f"git remote set-url origin {repo_url}")
+
+    # Hacer push al repositorio de destino
+    run_command("git push origin main")
+
+# Descargar el archivo cards.cdb
+download_file(cards_db_url, cards_db_path)
+
+# Obtener los archivos .cdb descargados manualmente en ./downloads
+cdb_files = [f for f in os.listdir(download_dir) if f.endswith(".cdb")]
+
+# Mergear los archivos .cdb
 merge_databases(cards_db_path, merged_db_path, cdb_files)
 
-print(f"Merge completado. Archivo generado: {merged_db_path}")
+# Hacer commit y push del archivo mergeado al repositorio
+commit_and_push()
+
 
 
 
